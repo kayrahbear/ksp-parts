@@ -1,6 +1,6 @@
 # KSP Parts Reference
 
-A queryable dataset of every part in a specific Kerbal Space Program install (stock + both DLCs + Bluedog Design Bureau), built by parsing the game's `.cfg` files into one NDJSON file. It exists to support the `playing-ksp` Claude skill and to answer "which part has the best X" questions the in-game editor search can't.
+A queryable dataset of every part in a specific Kerbal Space Program install (stock + both DLCs + Bluedog Design Bureau), built by parsing the game's `.cfg` files into one NDJSON file. It exists to support KSP related Claude skills and to answer "which part has the best X" questions the in-game editor search can't.
 
 **Output:** `parts.ndjson` — 1,768 parts, one JSON object per line (~1.5 MB).
 
@@ -36,8 +36,6 @@ python3 parts_scripts/build_parts_db.py
 5. **Derive** `source` / `family` from the path and a `buildable` flag.
 6. **Write** sorted records to `parts.ndjson` and print a summary.
 
-Re-run after changing the contents of `cfgs/` (e.g. a mod update). Source `.cfg` directories the dataset was built from are listed at the top of `parts_scripts/build_parts_db.py`.
-
 ## Schema
 
 | Field | Type | Notes |
@@ -67,9 +65,6 @@ DB=parts.ndjson
 grep '"name": "liquidEngine2_v2"' "$DB" | jq          # one part
 jq -c 'select(.buildable and .source=="Bluedog_DB" and (.engines|length>0))' "$DB"
 ```
-
-A fuller cookbook of recipes (engine selection, TWR/Δv inputs, tank capacity, tech-node lookups) and important caveats lives in the skill reference doc:
-`~/.claude/skills/playing-ksp/reference/parts-database.md`.
 
 ## Data caveats
 
