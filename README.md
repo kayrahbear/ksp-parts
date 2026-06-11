@@ -47,7 +47,8 @@ python3 parts_scripts/build_parts_db.py
 | `family`, `path` | string | Provenance from the path |
 | `category`, `subcategory`, `techRequired`, `crewCapacity` | | Editor / tech-tree metadata |
 | `cost`, `entryCost` | number | Funds |
-| `mass`, `crashTolerance`, `maxTemp`, `angularDrag`, `maxDrag`, `minDrag` | number | Physical |
+| `mass`, `crashTolerance`, `maxTemp`, `angularDrag`, `maxDrag`, `minDrag` | number | Physical. `mass` is dry mass (tonnes). |
+| `resourceMass`, `wetMass` | number | Derived: stored-resource mass (Σ `maxAmount`×density) and `mass`+`resourceMass`. For tanks, `wetMass` is full mass; the rocket equation wants wet/dry = `wetMass`/`mass`. |
 | `bulkheadProfiles` | [string] | Diameter profile(s), the reliable diameter signal. Stock `size0/1/2/3` = 0.625/1.25/2.5/3.75m; BDB `size#p#` = literal metres (`size2p5`=2.5m, `size00`=0.3125m) |
 | `attachNodeSizes` | [int] | Stack node size codes. Stock/DLC: 0=0.625m, 1=1.25m, 2=2.5m, 3=3.75m, 4=5m. **Not reliable diameter for BDB** (codes mean attachment compatibility) — use `bulkheadProfiles` |
 | `resources` | [obj] | Stored capacity: `{name, amount, maxAmount}` (storage only, not consumption rates) |

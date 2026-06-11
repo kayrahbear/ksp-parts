@@ -24,6 +24,7 @@ from typing import Dict, List, Optional
 
 import ksp_cfg
 import part_modules
+import resource_density
 from ksp_cfg import Node
 from util import to_float as _to_float, to_int as _to_int
 
@@ -38,6 +39,13 @@ _GAMEDATA = Path(
 DEFAULT_DICTS = [
     _GAMEDATA / "Squad/Localization/dictionary.cfg",
     _GAMEDATA / "SquadExpansion/Serenity/Localization/dictionary.cfg",
+]
+
+# RESOURCE_DEFINITION cfgs for resource densities (tonnes/unit), used to derive
+# resourceMass and wetMass. Stock first so it wins over the CRP mod pack.
+DEFAULT_DENSITY_CFGS = [
+    _GAMEDATA / "Squad/Resources/ResourcesGeneric.cfg",
+    _GAMEDATA / "CommunityResourcePack/CommonResources.cfg",
 ]
 
 
@@ -98,7 +106,26 @@ def _provenance(rel: Path) -> Dict[str, Optional[str]]:
     return {"source": source, "family": family, "path": rel.as_posix()}
 
 
-def extract_part(part: Node, rel: Path, loc: List[Dict[str, str]]) -> Optional[Dict]:
+def _mass_fields(
+    mass: Optional[float],
+    resources: List[Dict],
+    densities: Dict[str, float],
+) -> Dict[str, Optional[float]]:
+    """Stored-resource mass (Σ maxAmount × density) and resulting wet mass."""
+    rmass = sum(
+        (r["maxAmount"] or 0.0) * densities.get(r["name"], 0.0) for r in resources
+    )
+    rmass = round(rmass, 5)
+    wet = round(mass + rmass, 5) if mass is not None else None
+    return {"resourceMass": rmass, "wetMass": wet}
+
+
+def extract_part(
+    part: Node,
+    rel: Path,
+    loc: List[Dict[str, str]],
+    densities: Dict[str, float],
+) -> Optional[Dict]:
     name = part.first("name")
     if not name:
         return None  # not a real part definition
@@ -130,14 +157,22 @@ def extract_part(part: Node, rel: Path, loc: List[Dict[str, str]]) -> Optional[D
         "attachNodeSizes": _attach_sizes(part),
         "resources": _resources(part),
     }
+    record.update(_mass_fields(record["mass"], record["resources"], densities))
     record.update(part_modules.extract(part))
     return record
 
 
-def build(cfgs_dir: Path, out_path: Path, dict_paths: List[Path]) -> None:
+def build(
+    cfgs_dir: Path,
+    out_path: Path,
+    dict_paths: List[Path],
+    density_paths: List[Path],
+) -> None:
     files = sorted(cfgs_dir.rglob("*.cfg"))
     if not files:
         sys.exit(f"No .cfg files found under {cfgs_dir}")
+
+    densities = resource_density.load_densities(density_paths)
 
     # Pass 1: build localization maps (inline comments + stock dictionary).
     inline: Dict[str, str] = {}
@@ -162,7 +197,7 @@ def build(cfgs_dir: Path, out_path: Path, dict_paths: List[Path]) -> None:
             print(f"WARN  parse failed {rel}: {e}", file=sys.stderr)
             continue
         for part in root.children_named("PART"):
-            rec = extract_part(part, rel, loc_maps)
+            rec = extract_part(part, rel, loc_maps, densities)
             if rec:
                 records.append(rec)
 
@@ -197,8 +232,9 @@ def main() -> None:
     ap.add_argument("--cfgs", type=Path, default=Path("cfgs"))
     ap.add_argument("--out", type=Path, default=Path("parts.ndjson"))
     ap.add_argument("--dict", type=Path, nargs="*", default=DEFAULT_DICTS)
+    ap.add_argument("--density", type=Path, nargs="*", default=DEFAULT_DENSITY_CFGS)
     args = ap.parse_args()
-    build(args.cfgs, args.out, args.dict)
+    build(args.cfgs, args.out, args.dict, args.density)
 
 
 if __name__ == "__main__":
