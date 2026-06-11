@@ -146,6 +146,35 @@ def parachute(part: Node) -> Optional[Dict]:
     }
 
 
+def antenna(part: Node) -> Optional[Dict]:
+    """CommNet antenna data from ModuleDataTransmitter.
+
+    `type` is the field that matters most in the editor:
+    - INTERNAL: built into probe cores/pods; tiny power, cannot relay.
+    - DIRECT:   real antenna, reaches the network, but cannot relay others.
+    - RELAY:    can also repeat signals from other craft (relay sats need this).
+
+    Derived: `dataRate` (packetSize/packetInterval, Mit/s) and `ecPerSecond`
+    (packetResourceCost/packetInterval, EC/s while transmitting)."""
+    mods = _modules(part, "ModuleDataTransmitter")
+    if not mods:
+        return None
+    m = mods[0]
+    interval = to_float(m.first("packetInterval"))
+    size = to_float(m.first("packetSize"))
+    cost = to_float(m.first("packetResourceCost"))
+    return {
+        "type": m.first("antennaType"),
+        "power": to_float(m.first("antennaPower")),
+        "combinable": (m.first("antennaCombinable") or "False").lower() == "true",
+        "packetSize": size,
+        "packetInterval": interval,
+        "packetResourceCost": cost,
+        "dataRate": round(size / interval, 4) if size and interval else None,
+        "ecPerSecond": round(cost / interval, 4) if cost and interval else None,
+    }
+
+
 def aero_surface(part: Node) -> Optional[Dict]:
     """Control surfaces and fixed lifting surfaces (wings/fins)."""
     ctrl = _modules(part, "ModuleControlSurface")
@@ -173,6 +202,7 @@ def extract(part: Node) -> Dict[str, object]:
         ("command", command(part)),
         ("reactionWheel", reaction_wheel(part)),
         ("power", power(part)),
+        ("antenna", antenna(part)),
         ("parachute", parachute(part)),
         ("aeroSurface", aero_surface(part)),
     ):
